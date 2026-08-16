@@ -1,0 +1,48 @@
+{
+  "board_w_in": 44.0,
+  "board_h_in": 60.0,
+  "px_origin": [
+    12,
+    113
+  ],
+  "px_scale": 16.96363636363636,
+  "pattern": "crucible_of_battle",
+  "zones": [
+    {
+      "owner": "red",
+      "polygon_in": [
+        [
+          0,
+          30.0
+        ],
+        [
+          0,
+          60.0
+        ],
+        [
+          44.0,
+          60.0
+        ]
+      ],
+      "vertex_count": 3
+    },
+    {
+      "owner": "blue",
+      "polygon_in": [
+        [
+          44.0,
+          30.0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          44.0,
+          0
+        ]
+      ],
+      "vertex_count": 3
+    }
+  ]
+}

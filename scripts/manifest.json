@@ -1,0 +1,54 @@
+[
+  {"id": "tah_pa_a", "filename": "TAH_PA_A.png", "display_name": "Layout A", "pack": "TAH: Priority Assets", "var_name": "tahPaA"},
+  {"id": "tah_pa_b", "filename": "TAH_PA_B.png", "display_name": "Layout B", "pack": "TAH: Priority Assets", "var_name": "tahPaB"},
+  {"id": "tah_pa_c", "filename": "TAH_PA_C.png", "display_name": "Layout C", "pack": "TAH: Priority Assets", "var_name": "tahPaC"},
+  {"id": "tah_purge_a", "filename": "TAH_Purge_A.png", "display_name": "Layout A", "pack": "TAH: Purge", "var_name": "tahPurgeA"},
+  {"id": "tah_purge_b", "filename": "TAH_Purge_B.png", "display_name": "Layout B", "pack": "TAH: Purge", "var_name": "tahPurgeB"},
+  {"id": "tah_purge_c", "filename": "TAH_Purge_C.png", "display_name": "Layout C", "pack": "TAH: Purge", "var_name": "tahPurgeC"},
+  {"id": "tah_recon_a", "filename": "TAH_Recon_A.png", "display_name": "Layout A", "pack": "TAH: Recon", "var_name": "tahReconA"},
+  {"id": "tah_recon_b", "filename": "TAH_Recon_B.png", "display_name": "Layout B", "pack": "TAH: Recon", "var_name": "tahReconB"},
+  {"id": "tah_recon_c", "filename": "TAH_Recon_C.png", "display_name": "Layout C", "pack": "TAH: Recon", "var_name": "tahReconC"},
+  {"id": "tah_dis_a", "filename": "TAH_Dis_A.png", "display_name": "Layout A", "pack": "TAH: Disruption", "var_name": "tahDisA"},
+  {"id": "tah_dis_b", "filename": "TAH_Dis_B.png", "display_name": "Layout B", "pack": "TAH: Disruption", "var_name": "tahDisB"},
+  {"id": "tah_dis_c", "filename": "TAH_Dis_C.png", "display_name": "Layout C", "pack": "TAH: Disruption", "var_name": "tahDisC"},
+
+  {"id": "purge_mirror_a", "filename": "Purge_Mirror_A.png", "display_name": "Layout A", "pack": "Purge Mirror", "var_name": "purgeMirrorA"},
+  {"id": "purge_mirror_b", "filename": "Purge_Mirror_B.png", "display_name": "Layout B", "pack": "Purge Mirror", "var_name": "purgeMirrorB"},
+  {"id": "purge_mirror_c", "filename": "Purge_Mirror_C.png", "display_name": "Layout C", "pack": "Purge Mirror", "var_name": "purgeMirrorC"},
+
+  {"id": "dis_mirror_a", "filename": "Dis_Mirror_A.png", "display_name": "Layout A", "pack": "Disruption Mirror", "var_name": "disMirrorA"},
+  {"id": "dis_mirror_b", "filename": "Dis_Mirror_B.png", "display_name": "Layout B", "pack": "Disruption Mirror", "var_name": "disMirrorB"},
+  {"id": "dis_mirror_c", "filename": "Dis_Mirror_C.png", "display_name": "Layout C", "pack": "Disruption Mirror", "var_name": "disMirrorC"},
+
+  {"id": "dis_pa_a", "filename": "Dis_PA_A.png", "display_name": "Layout A", "pack": "Disruption Priority Assets", "var_name": "disPaA"},
+  {"id": "dis_pa_b", "filename": "Dis_PA_B.png", "display_name": "Layout B", "pack": "Disruption Priority Assets", "var_name": "disPaB"},
+  {"id": "dis_pa_c", "filename": "Dis_PA_C.png", "display_name": "Layout C", "pack": "Disruption Priority Assets", "var_name": "disPaC"},
+
+  {"id": "dis_recon_a", "filename": "Dis_Recon_A.png", "display_name": "Layout A", "pack": "Disruption Recon", "var_name": "disReconA"},
+  {"id": "dis_recon_b", "filename": "Dis_Recon_B.png", "display_name": "Layout B", "pack": "Disruption Recon", "var_name": "disReconB"},
+  {"id": "dis_recon_c", "filename": "Dis_Recon_C.png", "display_name": "Layout C", "pack": "Disruption Recon", "var_name": "disReconC"},
+
+  {"id": "pa_mirror_a", "filename": "PA_Mirror_A.png", "display_name": "Layout A", "pack": "Priority Assets Mirror", "var_name": "paMirrorA"},
+  {"id": "pa_mirror_b", "filename": "PA_Mirror_B.png", "display_name": "Layout B", "pack": "Priority Assets Mirror", "var_name": "paMirrorB"},
+  {"id": "pa_mirror_c", "filename": "PA_Mirror_C.png", "display_name": "Layout C", "pack": "Priority Assets Mirror", "var_name": "paMirrorC"},
+
+  {"id": "purge_dis_a", "filename": "Purge_Dis_A.png", "display_name": "Layout A", "pack": "Purge Disruption", "var_name": "purgeDisA"},
+  {"id": "purge_dis_b", "filename": "Purge_Dis_B.png", "display_name": "Layout B", "pack": "Purge Disruption", "var_name": "purgeDisB"},
+  {"id": "purge_dis_c", "filename": "Purge_Dis_C.png", "display_name": "Layout C", "pack": "Purge Disruption", "var_name": "purgeDisC"},
+
+  {"id": "purge_pa_a", "filename": "Purge_PA_A.png", "display_name": "Layout A", "pack": "Purge Priority Assets", "var_name": "purgePaA"},
+  {"id": "purge_pa_b", "filename": "Purge_PA_B.png", "display_name": "Layout B", "pack": "Purge Priority Assets", "var_name": "purgePaB"},
+  {"id": "purge_pa_c", "filename": "Purge_PA_C.png", "display_name": "Layout C", "pack": "Purge Priority Assets", "var_name": "purgePaC"},
+
+  {"id": "purge_recon_a", "filename": "Purge_Recon_A.png", "display_name": "Layout A", "pack": "Purge Recon", "var_name": "purgeReconA"},
+  {"id": "purge_recon_b", "filename": "Purge_Recon_B.png", "display_name": "Layout B", "pack": "Purge Recon", "var_name": "purgeReconB"},
+  {"id": "purge_recon_c", "filename": "Purge_Recon_C.png", "display_name": "Layout C", "pack": "Purge Recon", "var_name": "purgeReconC"},
+
+  {"id": "recon_mirror_a", "filename": "Recon_Mirror_A.png", "display_name": "Layout A", "pack": "Recon Mirror", "var_name": "reconMirrorA"},
+  {"id": "recon_mirror_b", "filename": "Recon_Mirror_B.png", "display_name": "Layout B", "pack": "Recon Mirror", "var_name": "reconMirrorB"},
+  {"id": "recon_mirror_c", "filename": "Recon_Mirror_C.png", "display_name": "Layout C", "pack": "Recon Mirror", "var_name": "reconMirrorC"},
+
+  {"id": "recon_pa_a", "filename": "Recon_PA_A.png", "display_name": "Layout A", "pack": "Recon Priority Assets", "var_name": "reconPaA"},
+  {"id": "recon_pa_b", "filename": "Recon_PA_B.png", "display_name": "Layout B", "pack": "Recon Priority Assets", "var_name": "reconPaB"},
+  {"id": "recon_pa_c", "filename": "Recon_PA_C.png", "display_name": "Layout C", "pack": "Recon Priority Assets", "var_name": "reconPaC"}
+]

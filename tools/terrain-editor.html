@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Strat Deployer — Terrain Correction Tool</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; display: flex; height: 100vh; }
+  #sidebar { width: 300px; border-right: 1px solid #ccc; padding: 12px; overflow-y: auto; box-sizing: border-box; }
+  select, button { width: 100%; padding: 8px; margin-bottom: 8px; font-size: 14px; }
+  .map-item { padding: 6px 8px; cursor: pointer; border-radius: 4px; font-size: 13px; }
+  .map-item:hover { background: #eee; }
+  .map-item.active { background: #d0e4ff; font-weight: bold; }
+  #info { font-size: 12px; color: #555; margin: 8px 0; line-height: 1.5; }
+  #canvas-wrap { flex: 1; overflow: auto; padding: 16px; display: flex; gap: 16px; }
+  svg { border: 1px solid #333; background: #fff; }
+  .vertex { fill: #fff; stroke: #000; stroke-width: 2; cursor: grab; }
+  .vertex.dragging { cursor: grabbing; fill: #f80; }
+  .piece-poly { fill: rgba(150,150,150,0.5); stroke: #555; stroke-width: 2; cursor: pointer; }
+  .piece-poly.selected { stroke: #f0f; stroke-width: 3; stroke-dasharray: 4; }
+  #piece-list { width: 260px; }
+  .piece-row { padding: 6px; border: 1px solid #ddd; margin-bottom: 4px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .piece-row.selected { background: #ffe0ff; border-color: #f0f; }
+  .piece-row button { width: auto; padding: 2px 8px; font-size: 11px; margin: 2px 4px 0 0; }
+  h3 { margin: 4px 0 8px; }
+  code { font-size: 11px; }
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <h3>Maps (42)</h3>
+  <div id="info">
+    Click a map, then click a piece to select it (shows in the right panel).
+    Drag its corners to fix the footprint. <b>Shift-click a vertex</b> to
+    delete it (down to a triangle minimum). Use "Add Piece" to place a new
+    rectangle, "Delete Piece" to remove a bogus one.
+  </div>
+  <button id="exportBtn">Export corrected JSON</button>
+  <div id="mapList"></div>
+</div>
+<div id="canvas-wrap">
+  <svg id="stage" width="700" height="960"></svg>
+  <div id="piece-list"></div>
+</div>
+
+<script>
+const DATA_URL = "terrain_editor_data.json";
+const IMAGE_BASE = "../public/map-images/";
+const DISPLAY_W = 700;
+
+let mapsData = {};
+let currentId = null;
+let workingPieces = null;
+let selectedIdx = null;
+let dragState = null;
+
+const svg = document.getElementById("stage");
+const mapListEl = document.getElementById("mapList");
+const pieceListEl = document.getElementById("piece-list");
+
+fetch(DATA_URL).then(r => r.json()).then(data => {
+  mapsData = data;
+  buildMapList();
+  selectMap(Object.keys(mapsData)[0]);
+});
+
+function buildMapList() {
+  mapListEl.innerHTML = "";
+  Object.entries(mapsData).forEach(([id, m]) => {
+    const div = document.createElement("div");
+    div.className = "map-item";
+    div.textContent = `${id} (${m.terrain.length})`;
+    div.onclick = () => selectMap(id);
+    div.dataset.id = id;
+    mapListEl.appendChild(div);
+  });
+}
+
+function selectMap(id) {
+  currentId = id;
+  const m = mapsData[id];
+  workingPieces = JSON.parse(JSON.stringify(m.terrain));
+  selectedIdx = null;
+  document.querySelectorAll(".map-item").forEach(el => el.classList.toggle("active", el.dataset.id === id));
+  if (!m._natW) {
+    const probe = new Image();
+    probe.onload = () => { m._natW = probe.naturalWidth; m._natH = probe.naturalHeight; render(); };
+    probe.src = IMAGE_BASE + m.filename;
+  }
+  render();
+}
+
+function imgDims(m) {
+  return [m._natW || 980, m._natH || 1200];
+}
+
+function toDisplay(m, xIn, yIn, scale) {
+  const px = xIn * m.px_scale + m.px_origin[0];
+  const py = m.px_origin[1] + (m.board_h_in - yIn) * m.px_scale;
+  return [px * scale, py * scale];
+}
+function fromDisplay(m, dx, dy, scale) {
+  const px = dx / scale, py = dy / scale;
+  const xIn = (px - m.px_origin[0]) / m.px_scale;
+  const yIn = m.board_h_in - (py - m.px_origin[1]) / m.px_scale;
+  return [Math.round(xIn * 100) / 100, Math.round(yIn * 100) / 100];
+}
+
+function render() {
+  const m = mapsData[currentId];
+  const [natW, natH] = imgDims(m);
+  const scale = DISPLAY_W / natW;
+  const dispH = natH * scale;
+  svg.setAttribute("width", DISPLAY_W);
+  svg.setAttribute("height", dispH);
+  svg.innerHTML = "";
+
+  const img = document.createElementNS("http://www.w3.org/2000/svg", "image");
+  img.setAttributeNS("http://www.w3.org/1999/xlink", "href", IMAGE_BASE + m.filename);
+  img.setAttribute("x", 0); img.setAttribute("y", 0);
+  img.setAttribute("width", DISPLAY_W); img.setAttribute("height", dispH);
+  svg.appendChild(img);
+
+  workingPieces.forEach((piece, pi) => {
+    const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    poly.setAttribute("class", "piece-poly" + (pi === selectedIdx ? " selected" : ""));
+    poly.setAttribute("points", piece.corners.map(([x,y]) => toDisplay(m,x,y,scale).join(",")).join(" "));
+    poly.addEventListener("click", (e) => { selectPiece(pi); e.stopPropagation(); });
+    svg.appendChild(poly);
+
+    // keep-out shapes (from extract_terrain_keepout.py) are read-only
+    // reference here -- this tool edits the card boundary only, not the
+    // feature geometry within it -- but shown so a card correction can be
+    // made with visibility into where the actual blocking feature sits
+    (piece.keepOutFootprints || []).forEach((shape) => {
+      const kp = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      kp.setAttribute("points", shape.map(([x,y]) => toDisplay(m,x,y,scale).join(",")).join(" "));
+      kp.setAttribute("fill", "rgba(255,0,255,0.35)");
+      kp.setAttribute("stroke", "rgba(255,0,255,0.8)");
+      kp.setAttribute("stroke-width", "1");
+      kp.setAttribute("pointer-events", "none");
+      svg.appendChild(kp);
+    });
+
+    if (pi === selectedIdx) {
+      piece.corners.forEach((pt, vi) => {
+        const [dx, dy] = toDisplay(m, pt[0], pt[1], scale);
+        const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        c.setAttribute("class", "vertex");
+        c.setAttribute("cx", dx); c.setAttribute("cy", dy); c.setAttribute("r", 6);
+        c.addEventListener("mousedown", (e) => startDrag(e, pi, vi, scale));
+        c.addEventListener("click", (e) => {
+          if (e.shiftKey) { deleteVertex(pi, vi); e.stopPropagation(); }
+        });
+        svg.appendChild(c);
+      });
+    }
+  });
+
+  renderPieceList();
+}
+
+function selectPiece(idx) {
+  selectedIdx = idx;
+  render();
+}
+
+function renderPieceList() {
+  pieceListEl.innerHTML = "<h3>Pieces</h3>";
+  const addBtn = document.createElement("button");
+  addBtn.textContent = "+ Add Piece";
+  addBtn.onclick = addPiece;
+  pieceListEl.appendChild(addBtn);
+
+  workingPieces.forEach((piece, pi) => {
+    const row = document.createElement("div");
+    row.className = "piece-row" + (pi === selectedIdx ? " selected" : "");
+    row.innerHTML = `<b>${piece.id}</b><br>${piece.width_in}" x ${piece.height_in}"`;
+    row.onclick = () => selectPiece(pi);
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Delete";
+    delBtn.onclick = (e) => { deletePiece(pi); e.stopPropagation(); };
+    row.appendChild(document.createElement("br"));
+    row.appendChild(delBtn);
+    pieceListEl.appendChild(row);
+  });
+}
+
+function addPiece() {
+  const m = mapsData[currentId];
+  const cx = m.board_w_in / 2, cy = m.board_h_in / 2;
+  const w = 4, h = 3;
+  workingPieces.push({
+    id: `terrain_new_${workingPieces.length + 1}`,
+    corners: [[cx-w/2,cy-h/2],[cx+w/2,cy-h/2],[cx+w/2,cy+h/2],[cx-w/2,cy+h/2]],
+    center: [cx, cy], width_in: w, height_in: h, angle_deg: 0,
+  });
+  selectedIdx = workingPieces.length - 1;
+  render();
+}
+
+function deletePiece(idx) {
+  workingPieces.splice(idx, 1);
+  selectedIdx = null;
+  render();
+}
+
+function deleteVertex(pi, vi) {
+  const poly = workingPieces[pi].corners;
+  if (poly.length <= 3) return;
+  poly.splice(vi, 1);
+  recomputeDerivedFields(workingPieces[pi]);
+  render();
+}
+
+function startDrag(e, pi, vi, scale) {
+  e.preventDefault();
+  dragState = { pi, vi, scale };
+  const move = (ev) => onDrag(ev);
+  const up = () => {
+    document.removeEventListener("mousemove", move);
+    document.removeEventListener("mouseup", up);
+    dragState = null;
+    render();
+  };
+  document.addEventListener("mousemove", move);
+  document.addEventListener("mouseup", up);
+}
+
+function recomputeDerivedFields(piece) {
+  // corners are the source of truth; center/width/height/angle are derived
+  // display/debug fields that must be kept in sync whenever corners change
+  const pts = piece.corners;
+  const n = pts.length;
+  let cx = 0, cy = 0;
+  pts.forEach(([x, y]) => { cx += x; cy += y; });
+  cx /= n; cy /= n;
+  piece.center = [Math.round(cx * 100) / 100, Math.round(cy * 100) / 100];
+
+  if (n === 4) {
+    // treat as an (possibly rotated) rectangle: width/height from adjacent
+    // edge lengths, angle from the first edge
+    const d = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const w = d(pts[0], pts[1]), h = d(pts[1], pts[2]);
+    piece.width_in = Math.round(w * 100) / 100;
+    piece.height_in = Math.round(h * 100) / 100;
+    const angleRad = Math.atan2(pts[1][1] - pts[0][1], pts[1][0] - pts[0][0]);
+    piece.angle_deg = Math.round((angleRad * 180 / Math.PI) * 10) / 10;
+  } else {
+    // non-rectangular (vertex added/deleted): fall back to bounding box
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    piece.width_in = Math.round((Math.max(...xs) - Math.min(...xs)) * 100) / 100;
+    piece.height_in = Math.round((Math.max(...ys) - Math.min(...ys)) * 100) / 100;
+  }
+}
+
+function onDrag(e) {
+  if (!dragState) return;
+  const m = mapsData[currentId];
+  const rect = svg.getBoundingClientRect();
+  const dx = e.clientX - rect.left, dy = e.clientY - rect.top;
+  const [xIn, yIn] = fromDisplay(m, dx, dy, dragState.scale);
+  workingPieces[dragState.pi].corners[dragState.vi] = [
+    Math.max(0, Math.min(m.board_w_in, xIn)),
+    Math.max(0, Math.min(m.board_h_in, yIn)),
+  ];
+  recomputeDerivedFields(workingPieces[dragState.pi]);
+  render();
+}
+
+document.getElementById("exportBtn").onclick = () => {
+  const m = mapsData[currentId];
+  // safety net: recompute every piece's derived fields at export time too,
+  // in case anything got out of sync (e.g. an older save, or a code path
+  // that edits corners without going through onDrag)
+  workingPieces.forEach(recomputeDerivedFields);
+  const out = {
+    board_w_in: m.board_w_in, board_h_in: m.board_h_in,
+    px_origin: m.px_origin, px_scale: m.px_scale,
+    terrain: workingPieces,
+  };
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${currentId}_terrain.json`;
+  a.click();
+};
+</script>
+</body>
+</html>

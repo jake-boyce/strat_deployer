@@ -1,0 +1,56 @@
+{
+  "board_w_in": 44.0,
+  "board_h_in": 60.0,
+  "px_origin": [
+    19,
+    107
+  ],
+  "px_scale": 16.952272727272728,
+  "pattern": "hammer_and_anvil",
+  "zones": [
+    {
+      "owner": "red",
+      "polygon_in": [
+        [
+          0,
+          42.13
+        ],
+        [
+          44.0,
+          42.13
+        ],
+        [
+          44.0,
+          60.0
+        ],
+        [
+          0,
+          60.0
+        ]
+      ],
+      "vertex_count": 4
+    },
+    {
+      "owner": "blue",
+      "polygon_in": [
+        [
+          0,
+          0
+        ],
+        [
+          44.0,
+          0
+        ],
+        [
+          44.0,
+          17.88
+        ],
+        [
+          0,
+          17.88
+        ]
+      ],
+      "vertex_count": 4
+    }
+  ]
+}

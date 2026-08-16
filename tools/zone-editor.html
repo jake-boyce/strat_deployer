@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Strat Deployer — Zone Correction Tool</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; display: flex; height: 100vh; }
+  #sidebar { width: 280px; border-right: 1px solid #ccc; padding: 12px; overflow-y: auto; box-sizing: border-box; }
+  #canvas-wrap { flex: 1; overflow: auto; padding: 16px; }
+  select, button { width: 100%; padding: 8px; margin-bottom: 8px; font-size: 14px; }
+  .map-item { padding: 6px 8px; cursor: pointer; border-radius: 4px; font-size: 13px; }
+  .map-item:hover { background: #eee; }
+  .map-item.active { background: #d0e4ff; font-weight: bold; }
+  .map-item.flagged::after { content: " ⚠"; }
+  #info { font-size: 12px; color: #555; margin: 8px 0; line-height: 1.5; }
+  svg { border: 1px solid #333; background: #fff; }
+  .vertex { fill: #fff; stroke: #000; stroke-width: 2; cursor: grab; }
+  .vertex:hover { fill: #ff0; }
+  .vertex.dragging { cursor: grabbing; fill: #f80; }
+  .zone-poly.red { fill: rgba(158,7,14,0.35); stroke: cyan; stroke-width: 2; }
+  .zone-poly.blue { fill: rgba(41,90,123,0.35); stroke: lime; stroke-width: 2; }
+  h3 { margin: 4px 0 8px; }
+  code { font-size: 11px; }
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <h3>Maps (42)</h3>
+  <div id="info">
+    Click a map, then drag vertices to fix the traced boundary.<br><br>
+    <b>Click a red/blue edge</b> to insert a new vertex there.<br>
+    <b>Shift-click a vertex</b> to delete it.<br><br>
+    When done with a map, click Export to download corrected JSON for it —
+    drop that file into <code>scripts/output/&lt;map_id&gt;_zones.json</code>
+    and re-run <code>generate_ts.py</code>.
+  </div>
+  <button id="exportBtn">Export corrected JSON</button>
+  <div id="mapList"></div>
+</div>
+<div id="canvas-wrap">
+  <svg id="stage" width="800" height="1100"></svg>
+</div>
+
+<script>
+const DATA_URL = "editor_data.json";
+const IMAGE_BASE = "../public/map-images/";
+const DISPLAY_W = 700;
+
+let mapsData = {};
+let currentId = null;
+let workingZones = null; // deep-copied, edited in place
+let dragState = null;
+
+const svg = document.getElementById("stage");
+const mapListEl = document.getElementById("mapList");
+
+fetch(DATA_URL).then(r => r.json()).then(data => {
+  mapsData = data;
+  buildMapList();
+  const firstId = Object.keys(mapsData)[0];
+  selectMap(firstId);
+});
+
+function solidityFlag(zones) {
+  // quick shoelace-based convex-hull-free heuristic: flag if any zone has >8 vertices
+  // (cheap proxy in-browser; authoritative check is scripts/check_solidity.py)
+  return zones.some(z => z.polygon_in.length > 8);
+}
+
+function buildMapList() {
+  mapListEl.innerHTML = "";
+  Object.entries(mapsData).forEach(([id, m]) => {
+    const div = document.createElement("div");
+    div.className = "map-item" + (solidityFlag(m.zones) ? " flagged" : "");
+    div.textContent = `${id} (${m.pack})`;
+    div.onclick = () => selectMap(id);
+    div.dataset.id = id;
+    mapListEl.appendChild(div);
+  });
+}
+
+function selectMap(id) {
+  currentId = id;
+  const m = mapsData[id];
+  workingZones = JSON.parse(JSON.stringify(m.zones)); // deep copy for editing
+  document.querySelectorAll(".map-item").forEach(el => {
+    el.classList.toggle("active", el.dataset.id === id);
+  });
+  render();
+}
+
+function render() {
+  const m = mapsData[currentId];
+  const scale = DISPLAY_W / (m.board_w_in * m.px_scale / m.px_scale); // placeholder, recompute below
+  const imgDisplayScale = DISPLAY_W / imgWidthPxFor(m);
+  const displayH = imgHeightPxFor(m) * imgDisplayScale;
+
+  svg.setAttribute("width", DISPLAY_W);
+  svg.setAttribute("height", displayH);
+  svg.innerHTML = "";
+
+  const img = document.createElementNS("http://www.w3.org/2000/svg", "image");
+  img.setAttributeNS("http://www.w3.org/1999/xlink", "href", IMAGE_BASE + m.filename);
+  img.setAttribute("x", 0); img.setAttribute("y", 0);
+  img.setAttribute("width", DISPLAY_W); img.setAttribute("height", displayH);
+  svg.appendChild(img);
+
+  const toDisplay = ([xIn, yIn]) => {
+    const px = xIn * m.px_scale + m.px_origin[0];
+    const py = m.px_origin[1] + (m.board_h_in - yIn) * m.px_scale;
+    return [px * imgDisplayScale, py * imgDisplayScale];
+  };
+
+  workingZones.forEach((zone, zi) => {
+    const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    poly.setAttribute("class", "zone-poly " + zone.owner);
+    poly.setAttribute("points", zone.polygon_in.map(p => toDisplay(p).join(",")).join(" "));
+    poly.style.cursor = "copy";
+    poly.addEventListener("click", (e) => {
+      if (e.detail === 0) return; // ignore synthetic
+      insertVertexNearClick(zi, e);
+    });
+    svg.appendChild(poly);
+
+    zone.polygon_in.forEach((pt, vi) => {
+      const [dx, dy] = toDisplay(pt);
+      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      c.setAttribute("class", "vertex");
+      c.setAttribute("cx", dx); c.setAttribute("cy", dy); c.setAttribute("r", 6);
+      c.addEventListener("mousedown", (e) => startDrag(e, zi, vi));
+      c.addEventListener("click", (e) => {
+        if (e.shiftKey) { deleteVertex(zi, vi); e.stopPropagation(); }
+      });
+      svg.appendChild(c);
+    });
+  });
+}
+
+function imgWidthPxFor(m) {
+  // stored implicitly via px_scale * board_w_in isn't exact (image has margins);
+  // fetch natural size once image loads instead -- simpler: use a cached Image object
+  if (!m._natW) { loadNatural(m); return 980; } // fallback until loaded
+  return m._natW;
+}
+function imgHeightPxFor(m) {
+  if (!m._natH) return 1200;
+  return m._natH;
+}
+function loadNatural(m) {
+  const probe = new Image();
+  probe.onload = () => { m._natW = probe.naturalWidth; m._natH = probe.naturalHeight; if (currentId) render(); };
+  probe.src = IMAGE_BASE + m.filename;
+}
+
+function startDrag(e, zoneIdx, vertIdx) {
+  e.preventDefault();
+  dragState = { zoneIdx, vertIdx };
+  e.target.classList.add("dragging");
+  const move = (ev) => onDrag(ev);
+  const up = () => {
+    document.removeEventListener("mousemove", move);
+    document.removeEventListener("mouseup", up);
+    dragState = null;
+    render();
+  };
+  document.addEventListener("mousemove", move);
+  document.addEventListener("mouseup", up);
+}
+
+function onDrag(e) {
+  if (!dragState) return;
+  const m = mapsData[currentId];
+  const rect = svg.getBoundingClientRect();
+  const dx = e.clientX - rect.left;
+  const dy = e.clientY - rect.top;
+  const imgDisplayScale = DISPLAY_W / imgWidthPxFor(m);
+  // invert toDisplay
+  const px = dx / imgDisplayScale;
+  const py = dy / imgDisplayScale;
+  const xIn = (px - m.px_origin[0]) / m.px_scale;
+  const yIn = m.board_h_in - (py - m.px_origin[1]) / m.px_scale;
+  workingZones[dragState.zoneIdx].polygon_in[dragState.vertIdx] = [
+    Math.round(Math.max(0, Math.min(m.board_w_in, xIn)) * 100) / 100,
+    Math.round(Math.max(0, Math.min(m.board_h_in, yIn)) * 100) / 100,
+  ];
+  render();
+}
+
+function deleteVertex(zoneIdx, vertIdx) {
+  const poly = workingZones[zoneIdx].polygon_in;
+  if (poly.length <= 3) return;
+  poly.splice(vertIdx, 1);
+  render();
+}
+
+function insertVertexNearClick(zoneIdx, e) {
+  const m = mapsData[currentId];
+  const rect = svg.getBoundingClientRect();
+  const dx = e.clientX - rect.left;
+  const dy = e.clientY - rect.top;
+  const imgDisplayScale = DISPLAY_W / imgWidthPxFor(m);
+  const px = dx / imgDisplayScale;
+  const py = dy / imgDisplayScale;
+  const xIn = (px - m.px_origin[0]) / m.px_scale;
+  const yIn = m.board_h_in - (py - m.px_origin[1]) / m.px_scale;
+  const poly = workingZones[zoneIdx].polygon_in;
+  // insert after nearest edge start point
+  let bestI = 0, bestD = Infinity;
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i+1) % poly.length];
+    const d = distToSegment([xIn, yIn], a, b);
+    if (d < bestD) { bestD = d; bestI = i; }
+  }
+  poly.splice(bestI + 1, 0, [Math.round(xIn*100)/100, Math.round(yIn*100)/100]);
+  render();
+}
+
+function distToSegment(p, a, b) {
+  const [px,py]=p,[ax,ay]=a,[bx,by]=b;
+  const dx=bx-ax, dy=by-ay;
+  const len2 = dx*dx+dy*dy || 1e-9;
+  let t = ((px-ax)*dx + (py-ay)*dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  const cx = ax + t*dx, cy = ay + t*dy;
+  return Math.hypot(px-cx, py-cy);
+}
+
+document.getElementById("exportBtn").onclick = () => {
+  const m = mapsData[currentId];
+  const out = {
+    board_w_in: m.board_w_in,
+    board_h_in: m.board_h_in,
+    px_origin: m.px_origin,
+    px_scale: m.px_scale,
+    zones: workingZones.map(z => ({ ...z, vertex_count: z.polygon_in.length })),
+    terrain: [],
+  };
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${currentId}_zones.json`;
+  a.click();
+};
+</script>
+</body>
+</html>

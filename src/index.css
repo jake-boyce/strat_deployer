@@ -1,0 +1,155 @@
+/*
+  Design direction: a tactical planning console, not a generic dark-mode
+  app. Warm graphite (not blue-black) + brass accent (not blue/green) +
+  a technical mono/sans pairing. Attacker/Defender red/blue are left
+  alone everywhere they appear -- those are functional colors tied to
+  the actual deployment-zone art on the maps, not part of this palette.
+*/
+:root {
+  /* surfaces */
+  --bg: #16181a;
+  --bg-panel: #1d2023;
+  --bg-panel-alt: #24282c;
+  --bg-hover: #2c3136;
+
+  /* structure */
+  --border: #35393e;
+  --border-light: #494f56;
+
+  /* text */
+  --text: #e9e6df;
+  --text-dim: #9a9d9f;
+  --text-faint: #6b6e70;
+
+  /* accent -- brass/amber, a tactical-console color, not the generic
+     blue/green every dark-mode dashboard reaches for */
+  --accent: #c9a227;
+  --accent-strong: #e0b93a;
+  --accent-dim: rgba(201, 162, 39, 0.16);
+  --accent-border: rgba(201, 162, 39, 0.55);
+
+  --danger: #c0392b;
+  --danger-strong: #e0473a;
+
+  --font-display: "IBM Plex Sans", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+
+  --radius: 4px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* faint fixed grid texture -- a tactical-map cue, not decoration for its
+   own sake; kept subtle enough to disappear under actual content */
+body {
+  background-image: linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+  background-attachment: fixed;
+  background-color: var(--bg);
+  position: relative;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  opacity: 0.94;
+  pointer-events: none;
+  z-index: -1;
+}
+
+#root {
+  min-height: 100vh;
+  position: relative;
+}
+
+button {
+  font-family: inherit;
+  color: var(--text);
+}
+
+button:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  color: var(--text);
+  margin: 0;
+}
+
+a {
+  color: var(--accent-strong);
+}
+
+/* uppercase, letter-spaced section labels -- the console/stencil
+   vocabulary used throughout instead of plain <h3>s */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* corner-bracket accent -- the one signature device, used sparingly on
+   selected/active elements (nav tab, selected card, armed palette item) */
+.bracket {
+  position: relative;
+}
+.bracket::before,
+.bracket::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--accent);
+  pointer-events: none;
+}
+.bracket::before {
+  top: -1px;
+  left: -1px;
+  border-right: none;
+  border-bottom: none;
+}
+.bracket::after {
+  bottom: -1px;
+  right: -1px;
+  border-left: none;
+  border-top: none;
+}
+
+.map-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+}
+.map-card:hover {
+  border-color: var(--border-light);
+  background: var(--bg-panel-alt);
+  transform: translateY(-1px);
+}
